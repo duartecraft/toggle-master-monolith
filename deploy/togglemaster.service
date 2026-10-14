@@ -1,0 +1,23 @@
+# Serviço systemd para manter a app rodando após fechar o SSH e após reboot.
+# Instalação (Amazon Linux 2023, usuário ec2-user; no Ubuntu troque por "ubuntu"):
+#   sudo cp deploy/togglemaster.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now togglemaster
+#   sudo systemctl status togglemaster
+#   journalctl -u togglemaster -f      # logs
+
+[Unit]
+Description=ToggleMaster (Flask + Gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/toggle-master-monolith
+EnvironmentFile=/etc/togglemaster.env
+ExecStart=/home/ec2-user/toggle-master-monolith/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

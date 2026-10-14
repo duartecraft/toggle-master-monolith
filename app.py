@@ -10,13 +10,20 @@ DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_PORT = os.getenv("DB_PORT", "5432")
+# RDS PostgreSQL 15+ exige SSL por padrão (rds.force_ssl=1). "prefer" funciona
+# local (sem SSL) e no RDS; use DB_SSLMODE=require na nuvem para forçar.
+DB_SSLMODE = os.getenv("DB_SSLMODE", "prefer")
 
 def get_db_connection():
     conn = psycopg2.connect(
         host=DB_HOST,
         database=DB_NAME,
         user=DB_USER,
-        password=DB_PASSWORD
+        password=DB_PASSWORD,
+        port=DB_PORT,
+        sslmode=DB_SSLMODE,
+        connect_timeout=5
     )
     return conn
 
@@ -138,6 +145,11 @@ def update_flag(name):
             conn.close()
     
     return jsonify({"message": f"Flag '{name}' atualizada"}), 200
+
+# Garante que a tabela exista também quando a app é iniciada direto pelo
+# Gunicorn (deploy na EC2), sem passar pelo entrypoint.sh do Docker.
+# CREATE TABLE IF NOT EXISTS é idempotente, então rodar mais de uma vez é seguro.
+init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
